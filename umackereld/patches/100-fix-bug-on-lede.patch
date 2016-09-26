@@ -1,0 +1,21 @@
+diff --git a/src/hostid.c b/src/hostid.c
+index 4ecf7f9..8d66796 100644
+--- a/src/hostid.c
++++ b/src/hostid.c
+@@ -1,3 +1,4 @@
++#include <sys/stat.h>
+ #include <sys/file.h>
+ #include <fcntl.h>
+ #include <unistd.h>
+diff --git a/src/metrics.h b/src/metrics.h
+index 0ba3d1b..a2b3a58 100644
+--- a/src/metrics.h
++++ b/src/metrics.h
+@@ -1,6 +1,7 @@
+ #ifndef UMACKERELD_METRICS_H
+ #define UMACKERELD_METRICS_H
+ #include <json-c/json.h>
++#include <time.h>
+ 
+ // name is expected to be a string object
+ // value is expected to be a double or int object
