@@ -1,0 +1,63 @@
+sudo: required
+language: c
+services: docker
+cache: ccache
+
+env:
+  global:
+    - IMG=yhnw/openwrt-sdk
+    - PKG_NAME=umackereld
+    - QUIET= # 1: suppress build log / "": output all
+  matrix:
+    - DISTRO=15.05.1 ARCH=ar71xx PKG_DIR=bin/ar71xx/packages
+    - DISTRO=lede    ARCH=ar71xx PKG_DIR=bin/packages/mips_24kc
+
+before_install:
+  - docker version
+  - ccache -s | tee ccache.log
+
+script:
+  - docker run --rm -u openwrt -v $PWD:/work -v $HOME/.ccache:/home/openwrt/.ccache $IMG:${DISTRO}-${ARCH} /bin/bash /work/build.sh ${DISTRO}-${ARCH} $PKG_DIR $PKG_NAME $QUIET
+  - ls -la
+  - |
+    echo '### before build ###' &&
+    cat ccache.log &&
+    echo &&
+    echo '### after build ###' &&
+    ccache -s
+
+after_failure:
+  - if [[ -e build.log ]]; then tail -300 build.log; fi
+
+before_deploy:
+  - |
+    if [[ -n "$TRAVIS_TAG" ]]; then
+      export VERSION=stable;
+      export VCS_TAG="$TRAVIS_TAG";
+      export DESC="Stable release";
+      export UPLOAD_DIR_SUFFIX=;
+    else
+      export VERSION=develop;
+      export VCS_TAG=HEAD;
+      export DESC="Development snapshot";
+      export UPLOAD_DIR_SUFFIX=-dev;
+    fi
+  - RELEASED=$(date +%Y-%m-%d) envsubst < descriptor.json.in > descriptor.json
+  - cat descriptor.json
+
+deploy:
+  - provider: bintray
+    file: "descriptor.json"
+    user: hnw
+    key:
+      secure: "dme6nIviNtJCTMOodYpcw8se9rYStYtw6ggKI6Wx5FzVNtyTzYHn3/w9ib3C5TIidzx52wE8Bx+cFTKSdKL0dkwrJuOE9JRndfB0X/8PvKed5IRnka6EkU4YQ/job153hkOXG3FgMw47Sb7c9j8F+SLh5j4xy4j8wdm5tgl56t0sJ2gvRpa9TxV2Ld+6FP11EVMSk8fE4zlSJBBTUUQD2/bIR+4BXgITPGPKYrFBPj+D4Wks1R8+6mI6ui5jgY0kdUnywIGbIr9mmy0lVP0uLAuigyYt3nwYEAqoVpdLPjrfrBULbIo77Ox0ukhIwB+zRZU81b71Y4OvVNwWgzngNzEt/pdSmoiMY5gu5JvREmUH14xJpVr8nu9e02NTbvgA3KOJckb5BaEPRbd7nuWMhanB+OjLFgtDNR4IEXO/3MNFwf48FBg+oQKzQsgbeaYMKxhR8xQ9Z44OsTiLM7kUjVXq3bQahrqNDWpvwVocTBdCsFS5H7B3QWp/TtQmCibrwwcqvEElICkzYCE/A0jcoN9fLwKLzMd3K1a6ikWdWi4vGBC54b00B2NXuoJNnWXhTvlmodDECC97dG5y+0FJXAJ6Q+QEHLWCvMOraaIGJiSPPBfh+0H6rjq7DQsakZ1rG7jabGasFnRNWvdKEVFrqHIgYSkzxZvr8J+jVdaUwY8="
+    on:
+      all_branches: true
+  - provider: releases
+    api_key:
+      secure: "rQmEJoBBm7qIocOyuV9/9vUQmqYy5MkPcoHuLsVUihKvp+ZxViltcU2GgdQFgJwnofYRngcP70qLMOv6oQVLS2fGny8lfSDc2vH4LeFEmxEzKxnDyWMPPIWHiBW0RZ7LXfjyLP9zJozZRJ96VVssk45yfwIN4LHy4f4tG/AsNssXmoFwD8yJkf8pYmORb9joyoy52w/6KCHKoO4S1Vz0+SryUPFOROfqJ5QKMK0bMbdLeJK8T5ep8emnoUQjfKP8wZUhChVQGD0zeAzTCkWUXpTwIotczgNVG1Zm5Nu7n6HVF0/OvqjepivjEdpplVUU/rsb7NJXXxyx6oQWALy22Gxw2xDOkwK49Fr9SPwF7NaE6LKZQr2EM7tyHqhGlY/5pZalByNh74CzosX8ELilAJc31LoiAB3eBGTaB9g0yHXiw8t5elZlYLlg76ffEhKhn/0/Kehe/GSNtfLKrEr/kpcXHJ/UyGdFzf4CJN8ZaG8vSL4sJYD38semdAGdUaqKVZX3YXVzncYFNdur9knoPzl2/RNTjit2AL8DEmTRGlxfmyifkgN0cGckXX+pzx+Mgj4QPjjB/F9jweJCjc82N514w+dPCJ7ACTK8Gavkf+HD6cuCB93lqx/J6U+KHle2CjNiSv0G8P9FHIRabMv9v6KSjTgNZG1q4Dser8Y2miM="
+    file_glob: true
+    file: "pkgs-for-github/*.ipk"
+    skip_cleanup: true
+    on:
+      tags: true
