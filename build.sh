@@ -7,7 +7,10 @@ QUIET=${4-}
 FEED_NAME=custom
 
 for dir in /home/openwrt/sdk/staging_dir/*; do
-    ln -snf /home/openwrt/.ccache $dir/ccache
+    if [[ -e "$dir/ccache" ]] ; then
+	mv "$dir/ccache" "$dir/ccache.orig"
+    fi
+    ln -s /home/openwrt/.ccache "$dir/ccache"
 done
 
 cd /home/openwrt/sdk
